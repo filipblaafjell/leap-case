@@ -1,0 +1,38 @@
+version: 2
+
+sources:
+  - name: raw_fred
+    database: LEAP_STAGING
+    schema: RAW
+    tables:
+      - name: FRED_UNEMPLOYMENT_STATE_RAW
+
+models:
+  - name: stg_fred_unemployment
+    description: >
+      Cleans and standardizes state-level unemployment data from the FRED dataset.
+      Each record represents a monthly unemployment rate for a given U.S. state.
+    columns:
+      - name: date
+        description: "Observation date for each state's unemployment rate."
+        tests:
+          - not_null
+
+      - name: state
+        description: "Two-letter U.S. state code."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [
+                "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY",
+                "LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND",
+                "OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"
+              ]
+
+      - name: unemployment_rate
+        description: "Unemployment rate (percentage of labor force)."
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ unemployment_rate }} between 0 and 50"
