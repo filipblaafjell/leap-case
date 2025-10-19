@@ -1,13 +1,17 @@
 {{ config(materialized='view') }}
 
-SELECT
-    survey_response_id                AS user_id,
-    order_date                        AS order_date,
-    category                          AS product_category,
-    purchase_price_per_unit           AS price,
-    quantity::int                     AS quantity,
-    shipping_address_state            AS state,
-    title                             AS product_title,
-    product_code                      AS product_code
-FROM {{ source('raw_amazon', 'AMAZON_PURCHASES_RAW') }} 
-WHERE order_date IS NOT NULL
+with cleaned as (
+    select
+        survey_response_id                         as user_id,
+        try_to_date(order_date)                    as order_date,
+        trim(category)                             as product_category,
+        cast(purchase_price_per_unit as float)     as price,
+        cast(quantity as int)                      as quantity,
+        upper(trim(shipping_address_state))        as state,
+        trim(title)                                as product_title,
+        trim(product_code)                         as product_code
+    from {{ source('raw_amazon', 'AMAZON_PURCHASES_RAW') }}
+    where order_date is not null
+)
+
+select * from cleaned
