@@ -1,0 +1,51 @@
+version: 2   
+
+ 
+# (2) SOURCE SECTION
+# defines where raw data lives
+
+sources:
+  - name: raw_amazon              
+    database: LEAP_STAGING         
+    schema: RAW                   
+    tables:
+      - name: AMAZON_PURCHASES_RAW   
+      - name: AMAZON_SURVEY_RAW      
+
+
+# (3) MODEL SECTION
+# describes your dbt models + built-in tests
+ 
+models:
+  - name: stg_amazon_purchases
+    description: "Cleaned and standardized Amazon purchase data"
+    columns:
+
+      - name: user_id
+        description: "Unique survey respondent identifier"
+        tests:
+          - not_null
+          - relationships: #check if in user exist in survey
+              arguments:
+                to: ref('stg_amazon_survey')
+                field: user_id
+      - name: order_date
+        description: "Date when the order was placed"
+        tests:
+          - not_null
+
+      - name: price
+        description: "Unit purchase price in USD"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{price }} >= 0"
+        
+      - name: quantity
+        description: "Number of units purchased per order line"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ quantity }} > 0"
