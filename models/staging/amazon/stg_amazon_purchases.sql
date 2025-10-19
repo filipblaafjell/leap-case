@@ -7,7 +7,13 @@ with cleaned as (
         trim(category)                             as product_category,
         cast(purchase_price_per_unit as float)     as price,
         cast(quantity as int)                      as quantity,
-        upper(trim(shipping_address_state))        as state,
+        
+        -- Handle missing or inconsistent states
+        case
+            when shipping_address_state is null then 'UNKNOWN'
+            else upper(trim(shipping_address_state))
+        end                                        as state,
+
         trim(title)                                as product_title,
         trim(product_code)                         as product_code
     from {{ source('raw_amazon', 'AMAZON_PURCHASES_RAW') }}

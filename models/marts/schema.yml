@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: mart_state_spending
+    description: "Monthly state-level spending aggregated with macroeconomic indicators."
+    columns:
+      - name: month
+        tests:
+          - not_null
+      - name: state
+        tests:
+          - not_null
+      - name: total_spend
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ total_spend }} >= 0"
