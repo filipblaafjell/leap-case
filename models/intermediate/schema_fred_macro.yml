@@ -1,0 +1,58 @@
+version: 2
+
+models:
+  - name: int_fred_macro
+    description: >
+      Pivots the long-format macroeconomic indicators
+
+    meta:
+      owner: data_engineering
+      layer: intermediate
+      tags: ["fred", "macro", "economic", "intermediate"]
+
+    config:
+      materialized: "view"
+      alias: "int_fred_macro"
+
+    columns:
+      - name: month
+        description: "Month key (date truncated to month) used for joining across datasets."
+        tests:
+          - not_null
+          - unique
+
+      - name: cpi_all_items
+        description: "Consumer Price Index for All Urban Consumers (CPIAUCSL)."
+
+      - name: fed_funds_rate
+        description: "Effective Federal Funds Rate (FEDFUNDS) — % per annum."
+
+      - name: personal_income
+        description: "Personal income in billions of dollars (PI)."
+
+      - name: retail_sales
+        description: "Retail and food services sales in millions of dollars (RSAFS)."
+
+      - name: consumer_sentiment
+        description: "University of Michigan Consumer Sentiment Index (UMCSENT)."
+
+      - name: personal_consumption_expenditure
+        description: "Personal Consumption Expenditures (PCE), billions USD."
+
+      - name: personal_saving_rate
+        description: "Personal saving rate as a percentage of disposable income (PSAVERT)."
+
+      - name: avg_hourly_earnings
+        description: "Average hourly earnings for production and nonsupervisory employees (CES0500000003)."
+
+      - name: revolving_credit
+        description: "Total revolving consumer credit outstanding, millions USD (REVOLSL)."
+
+      - name: job_openings
+        description: "Job openings in thousands (JTSJOL)."
+
+      - name: food_price_index
+        description: "Food price index (CUSR0000SAF11)."
+
+      - name: gasoline_price_index
+        description: "Gasoline price index (CUSR0000SETB01)."

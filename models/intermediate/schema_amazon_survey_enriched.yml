@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: int_amazon_survey_enriched
+    description: >
+      Cleans, normalizes, and enriches Amazon survey data.
+
+    meta:
+      owner: data_engineering
+      layer: intermediate
+      tags: ["amazon", "survey", "intermediate"]
+
+    config:
+      materialized: "view"
+      alias: "int_amazon_survey_enriched"
+
+    columns:
+      - name: user_id
+        description: "Unique user identifier from the Amazon survey."
+        tests:
+          - not_null
+          - unique
+
+      - name: gender
+        description: "Cleaned and standardized gender category."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["Male", "Female", "Other/Unknown"]
+
+      - name: age_group
+        description: "Normalized age group bucket derived from raw survey responses."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["18-24", "25-34", "35-44", "45-54", "55-64", "65+", "Unknown"]
+
+      - name: age_group_numeric
+        description: "Numeric encoding of age group for analytical use."
+
+      - name: income_bracket
+        description: "Normalized household income bracket."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["<25k", "25k–49k", "50k–74k", "75k–99k", "100k–149k", "150k+", "Unknown"]
+
+      - name: income_group_numeric
+        description: "Numeric encoding of income bracket for ordering and analysis."
+
+      - name: education_level
+        description: "Standardized education level category."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["High School", "Some College", "Bachelor", "Graduate", "Unknown"]
+
+      - name: amazon_use_frequency
+        description: "Cleaned string representing monthly Amazon usage frequency."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["<5 per month", "5–10 per month", ">10 per month", "Unknown"]
+
+      - name: household_size
+        description: "Number of individuals in the household, converted to integer."
