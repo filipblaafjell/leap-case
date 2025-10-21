@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: raw_amazon
+    database: LEAP_STAGING
+    schema: RAW
+    tables:
+      - name: AMAZON_PURCHASES_RAW
+      - name: AMAZON_SURVEY_RAW
+
+  - name: raw_fred
+    database: LEAP_STAGING
+    schema: RAW
+    tables:
+      - name: FRED_MACRO_RAW
+      - name: FRED_UNEMPLOYMENT_STATE_RAW

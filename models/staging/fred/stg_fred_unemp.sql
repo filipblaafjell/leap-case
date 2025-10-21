@@ -9,5 +9,8 @@ with cleaned as (
     where date is not null
 )
 
-select *
+select
+    date,
+    state,
+    unemployment_rate
 from cleaned
