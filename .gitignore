@@ -2,5 +2,8 @@
 target/
 dbt_packages/
 logs/
-data/amazon
-data/fred_combined
+data/amazon/amazon-purchases.csv
+data/amazon/survey.csv
+data/fred_combined/fred_unemployment_state.csv
+data/fred_combined/fred_macro_combined.csv
+    
