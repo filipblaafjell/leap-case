@@ -9,6 +9,7 @@ with purchases as (
         count(distinct product_code) as unique_products,
         count(*) as total_orders
     from {{ ref('stg_amazon_purchases') }}
+    where {{ filter_by_cutoff('order_date') }}
     group by 1,2,3
 ),
 
@@ -26,7 +27,8 @@ joined_user as (
         u.education_level,
         u.household_size
     from purchases p
-    left join {{ ref('int_user_profile') }} u using (user_id)
+    where {{ filter_by_cutoff('order_date') }}
+    left join {{ ref('stg_amazon_survey') }} u using (user_id)
 ),
 
 joined_unemp as (
