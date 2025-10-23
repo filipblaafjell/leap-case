@@ -15,12 +15,6 @@ Focused dbt project modeling Amazon purchase & survey data enriched with FRED ma
 | intermediate | Aggregations + demographic/economic context | user-month, user-state-month, product-state-month, national month |
 | marts | Business-facing metrics & growth calculations | state performance, demographics, product trends, macro correlation |
 
-### Key Conventions
-- Dates standardized with `date_trunc('month')`
-- Valid US states only via `filter_valid_states` macro
-- Growth metrics calculated only in marts
-- Core tests: uniqueness, not_null, domain plausibility (positive prices, unemployment 0–100)
-
 ### Running
 ```
 dbt deps   # install packages
