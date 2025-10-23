@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: stg_fred_macro
+    description: "Cleaned national macroeconomic indicators from FRED (Federal Reserve Economic Data). Monthly time series data covering employment, inflation, monetary policy, consumer behavior, and economic activity."
+    columns:
+      - name: month
+        description: "Month date for the economic indicators. Converted from string to date format using try_to_date."
+        tests: [unique, not_null]  # Time series grain - critical for joins
+      
+      - name: avg_hourly_earnings
+        description: "Average hourly earnings of all employees, total nonfarm (CES0500000003). Seasonally adjusted, in dollars. Key labor market indicator."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ avg_hourly_earnings }} > 0"
+              name: "avg_hourly_earnings_positive"
+      
+      - name: cpi_all_items
+        description: "Consumer Price Index for All Urban Consumers: All Items (CPIAUCSL). Seasonally adjusted, 1982-84=100. Primary inflation measure."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ cpi_all_items }} > 0"
+              name: "cpi_positive"
+      
+      - name: food_price_index
+        description: "Consumer Price Index for All Urban Consumers: Food (CUSR0000SAF11). Not seasonally adjusted, 1982-84=100. Food inflation component."
+        # No test - FRED economic data can have gaps, revisions, missing months
+      
+      - name: gasoline_price_index
+        description: "Consumer Price Index for All Urban Consumers: Gasoline (All Types) (CUSR0000SETB01). Not seasonally adjusted, 1982-84=100. Energy inflation component."
+        # No test - FRED economic data can have gaps, revisions, missing months
+      
+      - name: ecom_sales
+        description: "E-commerce retail sales (ECOMNSA). Not seasonally adjusted, in millions of dollars. Digital commerce activity measure."
+        # No test - FRED economic data can have gaps, revisions, missing months
+      
+      - name: fed_funds_rate
+        description: "Federal funds effective rate (FEDFUNDS). Not seasonally adjusted, percent per annum. Key monetary policy indicator."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ fed_funds_rate }} >= 0"
+              name: "fed_funds_rate_non_negative"
+      
+      - name: job_openings
+        description: "Job Openings: Total Nonfarm (JTSJOL). Seasonally adjusted, in thousands. Labor demand indicator from JOLTS survey."
+        # No test - FRED economic data can have gaps, revisions, missing months
+      
+      - name: personal_consumption
+        description: "Personal consumption expenditures (PCE). Seasonally adjusted at annual rates, billions of dollars. Consumer spending measure."
+        # No test - FRED economic data can have gaps, revisions, missing months
+      
+      - name: personal_income
+        description: "Personal income (PI). Seasonally adjusted at annual rates, billions of dollars. Household income measure."
+        # No test - FRED economic data can have gaps, revisions, missing months
+      
+      - name: personal_saving_rate
+        description: "Personal saving rate (PSAVERT). Seasonally adjusted, percent. Household financial health indicator."
+        # No test - FRED economic data can have gaps, revisions, missing months
+      
+      - name: credit_card_debt
+        description: "Revolving consumer credit outstanding (REVOLSL). Seasonally adjusted, billions of dollars. Consumer debt level indicator."
+        # No test - FRED economic data can have gaps, revisions, missing months
+      
+      - name: retail_sales
+        description: "Advance retail sales: retail and food services, total (RSAFS). Seasonally adjusted, millions of dollars. Consumer spending activity."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ retail_sales }} > 0"
+              name: "retail_sales_positive"
+      
+      - name: consumer_sentiment
+        description: "University of Michigan Consumer Sentiment Index (UMCSENT). Not seasonally adjusted, 1966:Q1=100. Consumer confidence measure."
+        # No test - FRED economic data can have gaps, revisions, missing months

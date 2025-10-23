@@ -1,0 +1,91 @@
+version: 2
+
+models:
+  - name: mart_state_product_trends
+    description: "Product category performance trends by state and month. Each row represents one product category's performance metrics in one state for one month, including month-over-month growth calculations. Business users can analyze regional product preferences, market penetration trends, and identify growth opportunities by geography and product category."
+    columns:
+      - name: state
+        description: "US state abbreviation where products were sold (e.g., 'CA', 'TX', 'NY'). Used for geographic analysis and regional comparison of product performance."
+        tests: [not_null]  # Required for geographic analysis
+      
+      - name: month
+        description: "Month of sales activity (YYYY-MM-DD format, always first day of month). Enables time-series analysis and trend identification across different periods."
+        tests: [not_null]  # Required for time-series analysis
+      
+      - name: product_category
+        description: "Product category name (e.g., 'Electronics', 'Books', 'Clothing'). Cleaned and standardized from purchase data. Can be NULL for uncategorized products, which represents a valid business scenario."
+      
+      - name: total_revenue
+        description: "Total dollar revenue for this product category in this state during this month. Calculated as sum(price * quantity). Key metric for understanding market value and performance by geography and product."
+        tests:
+          - not_null  # Business rule: every mart record must have revenue calculation
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+              name: "total_revenue_non_negative"
+      
+      - name: total_quantity
+        description: "Total units sold for this product category in this state during this month. Provides volume perspective complementing revenue metrics."
+        tests:
+          - not_null  # Required for volume analysis
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+              name: "total_quantity_positive"
+      
+      - name: unique_users
+        description: "Count of distinct customers who purchased this product category in this state during this month. Indicates market penetration and customer reach."
+        tests:
+          - not_null  # Required for customer analysis
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+              name: "unique_users_positive"
+      
+      - name: total_orders
+        description: "Count of individual purchase transactions for this product category in this state during this month. Measures transaction frequency and buying patterns."
+        tests:
+          - not_null  # Required for transaction analysis
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+              name: "total_orders_positive"
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= unique_users"
+              name: "orders_at_least_users"
+      
+      - name: revenue_growth_mom
+        description: "Month-over-month revenue growth rate as decimal (e.g., 0.15 = 15% growth, -0.05 = 5% decline). Calculated as (current_month_revenue - previous_month_revenue) / previous_month_revenue. NULL for first month of each state-product combination or when previous month had zero revenue."
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["state", "month", "product_category"]
+          name: "unique_state_month_product_grain"
+      
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "total_revenue / total_quantity > 0"
+          name: "average_unit_price_positive"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "total_quantity / total_orders > 0"
+          name: "average_quantity_per_order_positive"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "revenue_growth_mom >= -1.0"
+          name: "revenue_growth_realistic_floor"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "revenue_growth_mom <= 500.0"
+          name: "revenue_growth_realistic_ceiling"
+          
+      - dbt_utils.not_null_proportion:
+          arguments:
+            column_name: revenue_growth_mom
+            at_least: 0.5
+          name: "growth_data_reasonably_complete"

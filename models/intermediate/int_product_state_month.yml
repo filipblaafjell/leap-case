@@ -1,0 +1,72 @@
+version: 2
+
+models:
+  - name: int_product_state_month
+    description: "Product category performance by state and month. Each row represents one product category's sales in one state for one month. Critical for understanding regional product preferences and market penetration."
+    columns:
+      - name: state
+        description: "US state abbreviation where products were sold. Cleaned and standardized from purchase data."
+        tests: [not_null]  # Required for state-level analysis
+      
+      - name: month
+        description: "Month of sales activity. Truncated from order dates to monthly grain."
+        tests: [not_null]  # Required for time-series analysis
+      
+      - name: product_category
+        description: "Product category name. Cleaned and standardized from purchase data. Can be NULL for uncategorized products."
+      
+      - name: total_revenue
+        description: "Total dollar revenue for this product category in this state during this month. Calculated as sum(price * quantity)."
+        tests:
+          - not_null  # Business rule: every record must have revenue calculation
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ total_revenue }} > 0"
+              name: "total_revenue_positive"
+      
+      - name: total_quantity
+        description: "Total units sold for this product category in this state during this month."
+        tests:
+          - not_null  # Aggregation should always produce result
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ total_quantity }} > 0"
+              name: "total_quantity_positive"
+      
+      - name: unique_users
+        description: "Count of distinct users who purchased this product category in this state during this month."
+        tests:
+          - not_null  # Aggregation should always produce result
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ unique_users }} > 0"
+              name: "unique_users_positive"
+      
+      - name: total_orders
+        description: "Count of individual purchase transactions for this product category in this state during this month."
+        tests:
+          - not_null  # Aggregation should always produce result
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ total_orders }} > 0"
+              name: "total_orders_positive"
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ total_orders }} >= unique_users"
+              name: "orders_at_least_users"
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["state", "month", "product_category"]
+          name: "unique_state_month_category_grain"
+      
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "total_revenue / total_quantity > 0"
+          name: "average_unit_price_positive"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "total_quantity / total_orders > 0"
+          name: "average_quantity_per_order_positive"

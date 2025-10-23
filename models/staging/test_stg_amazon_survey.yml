@@ -1,0 +1,97 @@
+version: 2
+
+models:
+  - name: stg_amazon_survey
+    description: "Cleaned Amazon survey responses with demographic, behavioral, and preference data. One record per survey respondent. Filtered to valid US states only."
+    columns:
+      - name: user_id
+        description: "Unique survey response identifier. Primary key linking to purchase data."
+        tests: [unique, not_null]  # Primary key - critical for data integrity
+      
+      - name: age_group
+        description: "Age group category (e.g., '18-24', '25-34', etc.). Empty strings converted to NULL."
+        # No test - survey responses can be incomplete
+      
+      - name: hispanic_origin
+        description: "Hispanic or Latino origin indicator. Properly capitalized, empty strings converted to NULL."
+        # No test - demographic data can be incomplete
+      
+      - name: race
+        description: "Race category. Complex multi-race responses simplified to 'Other'. Properly capitalized, empty strings converted to NULL."
+        # No test - demographic data can be incomplete
+      
+      - name: education_level
+        description: "Highest education level completed. Parenthetical details removed, properly capitalized, empty strings converted to NULL."
+        # No test - survey responses can be incomplete
+      
+      - name: income_bracket
+        description: "Annual household income range (e.g., '$50,000-$74,999'). Empty strings converted to NULL."
+        # No test - income is sensitive, people skip this question
+      
+      - name: gender
+        description: "Gender identity. Properly capitalized, empty strings converted to NULL."
+        # No test - demographic data can be incomplete
+      
+      - name: sexual_orientation
+        description: "Sexual orientation. Parenthetical details removed, properly capitalized, empty strings converted to NULL."
+        # No test - sensitive personal data, can be incomplete
+      
+      - name: state
+        description: "US state abbreviation of residence. Converted from full state names to abbreviations using rename_state_to_abb macro. Filtered to valid US states only."
+        # No test - filtering handles validation, some may not provide state
+      
+      - name: household_size
+        description: "Number of people in household. Parenthetical details removed, empty strings converted to NULL."
+        # No test - survey responses can be incomplete
+      
+      - name: amazon_use_devices
+        description: "Number of Amazon devices used. Parenthetical details removed, empty strings converted to NULL."
+        # No test - survey responses can be incomplete
+      
+      - name: amazon_use_frequency
+        description: "How often respondent uses Amazon services. Empty strings converted to NULL."
+        # No test - survey responses can be incomplete
+      
+      - name: uses_cigarettes
+        description: "Cigarette usage indicator (Yes/No). Properly capitalized, empty strings converted to NULL."
+        # No test - sensitive health data, can be incomplete
+      
+      - name: uses_marijuana
+        description: "Marijuana usage indicator (Yes/No). Properly capitalized, empty strings converted to NULL."
+        # No test - sensitive substance use data, can be incomplete
+      
+      - name: uses_alcohol
+        description: "Alcohol usage indicator (Yes/No). Properly capitalized, empty strings converted to NULL."
+        # No test - sensitive substance use data, can be incomplete
+      
+      - name: has_diabetes
+        description: "Diabetes diagnosis indicator (Yes/No). Properly capitalized, empty strings converted to NULL."
+        # No test - sensitive health data, can be incomplete
+      
+      - name: uses_wheelchair
+        description: "Wheelchair usage indicator (Yes/No). Properly capitalized, empty strings converted to NULL."
+        # No test - sensitive health data, can be incomplete
+      
+      - name: life_changes
+        description: "Significant life changes in past year. Free text response, empty strings converted to NULL."
+        # No test - free text, can be incomplete
+      
+      - name: willing_to_sell_own_data
+        description: "Willingness to sell own personal data (Yes/No). Properly capitalized, empty strings converted to NULL."
+        # No test - preference data, can be incomplete
+      
+      - name: willing_to_sell_consumer_data
+        description: "Willingness to sell consumer data (Yes/No). Properly capitalized, empty strings converted to NULL."
+        # No test - preference data, can be incomplete
+      
+      - name: small_biz_use_case
+        description: "Interest in small business use cases (Yes/No). Properly capitalized, empty strings converted to NULL."
+        # No test - preference data, can be incomplete
+      
+      - name: census_data_use
+        description: "Interest in census data usage (Yes/No). Properly capitalized, empty strings converted to NULL."
+        # No test - preference data, can be incomplete
+      
+      - name: research_society_use
+        description: "Interest in research/society data usage (Yes/No). Properly capitalized, empty strings converted to NULL."
+        # No test - preference data, can be incomplete

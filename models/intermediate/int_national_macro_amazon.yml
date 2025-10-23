@@ -1,0 +1,91 @@
+version: 2
+
+models:
+  - name: int_national_macro_amazon
+    description: "National-level Amazon metrics joined with macroeconomic indicators. Each row represents one month's aggregated Amazon performance alongside economic conditions. Foundation for correlation analysis between consumer behavior and economic factors."
+    columns:
+      - name: month
+        description: "Month of measurement. Primary key for time-series analysis."
+        tests: [unique, not_null]  # Time series grain - critical for analysis
+      
+      # Amazon Metrics
+      - name: national_total_spend
+        description: "Total dollar spend across all Amazon users nationally for this month. Aggregated from user-level behavior."
+        tests:
+          - not_null  # Business rule: every month must have total spend
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ national_total_spend }} > 0"
+              name: "national_total_spend_positive"
+      
+      - name: active_users
+        description: "Count of distinct users who made purchases nationally for this month."
+        tests:
+          - not_null  # Business rule: every month must have active user count
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ active_users }} > 0"
+              name: "active_users_positive"
+      
+      - name: avg_user_spend
+        description: "Average spend per active user for this month. Calculated as national_total_spend / active_users."
+        tests:
+          - not_null  # Business rule: every month must have average calculation
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ avg_user_spend }} > 0"
+              name: "avg_user_spend_positive"
+      
+      # Economic Indicators - Labor Market
+      - name: avg_hourly_earnings
+        description: "Average hourly earnings from FRED data. Key labor market indicator for correlation analysis."
+      
+      - name: national_unemployment_rate
+        description: "National average unemployment rate calculated from state-level FRED data."
+      
+      # Economic Indicators - Inflation
+      - name: cpi_all_items
+        description: "Consumer Price Index from FRED data. Primary inflation measure for purchasing power analysis."
+      
+      - name: food_price_index
+        description: "Food price index from FRED data. Specific inflation component affecting consumer spending."
+      
+      - name: gasoline_price_index
+        description: "Gasoline price index from FRED data. Energy cost component affecting disposable income."
+      
+      # Economic Indicators - Monetary Policy
+      - name: fed_funds_rate
+        description: "Federal funds rate from FRED data. Key monetary policy indicator affecting consumer credit."
+      
+      # Economic Indicators - Consumer Activity
+      - name: retail_sales
+        description: "Total retail sales from FRED data. Broader consumer spending context for Amazon performance."
+      
+      - name: consumer_sentiment
+        description: "University of Michigan consumer sentiment index from FRED data. Consumer confidence measure."
+      
+      - name: personal_income
+        description: "Personal income from FRED data. Household income measure affecting spending capacity."
+      
+      - name: personal_consumption
+        description: "Personal consumption expenditures from FRED data. Total consumer spending measure."
+      
+      - name: personal_saving_rate
+        description: "Personal saving rate from FRED data. Household financial behavior affecting spending."
+
+    tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "national_total_spend / active_users = avg_user_spend"
+          name: "avg_user_spend_calculation_correct"
+      
+      - dbt_utils.not_null_proportion:
+          arguments:
+            column_name: cpi_all_items
+            at_least: 0.9
+          name: "key_economic_indicators_mostly_available"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "national_unemployment_rate between 0 and 50"
+          name: "national_unemployment_reasonable_bounds"

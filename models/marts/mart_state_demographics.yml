@@ -1,0 +1,91 @@
+version: 2
+
+models:
+  - name: mart_state_demographics
+    description: "Demographic segment performance by state and month including spend patterns, user activity, and economic context. Each row represents one demographic segment's performance in one state for one month. Business users can analyze customer segments, identify target demographics, and understand spending patterns across different population groups and geographic regions."
+    columns:
+      - name: state
+        description: "US state full name (e.g., 'California', 'Texas', 'New York'). Transformed from abbreviations using rename_states macro for business-friendly reporting and geographic analysis."
+        tests: [not_null]  # Required for geographic analysis
+      
+      - name: month
+        description: "Month of activity (YYYY-MM-DD format, always first day of month). Enables time-series analysis of demographic segment performance over time."
+        tests: [not_null]  # Required for time-series analysis
+      
+      - name: gender
+        description: "Customer gender identity from survey data (e.g., 'Male', 'Female', 'Non-binary'). Used for demographic segmentation and targeted marketing analysis."
+        tests: [not_null]  # Filtered to only include records with gender data
+      
+      - name: age_group
+        description: "Customer age group category from survey data (e.g., '18-24', '25-34', '35-44', '45-54', '55+'). Enables generational analysis and age-based customer insights."
+        tests: [not_null]  # Filtered to only include records with age data
+      
+      - name: income_bracket
+        description: "Customer household income range from survey data (e.g., 'Under $25k', '$25k-$50k', '$50k-$75k', '$75k-$100k', 'Over $100k'). Critical for understanding purchasing power and economic segments."
+        tests: [not_null]  # Filtered to only include records with income data
+      
+      - name: total_spend
+        description: "Total dollar amount spent by this demographic segment in this state during this month. Aggregated across all users matching the demographic criteria."
+        tests:
+          - not_null  # Business rule: every segment must have spend calculation
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+              name: "total_spend_positive"
+      
+      - name: active_users
+        description: "Count of distinct users in this demographic segment who made purchases in this state during this month. Measures segment size and market penetration."
+        tests:
+          - not_null  # Required for segment analysis
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+              name: "active_users_positive"
+      
+      - name: avg_user_spend
+        description: "Average dollar amount spent per user in this demographic segment for this state and month. Calculated as total_spend / active_users. Key metric for understanding segment spending behavior."
+        tests:
+          - not_null  # Calculation should always produce result
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+              name: "avg_user_spend_positive"
+      
+      - name: state_unemployment_rate
+        description: "Average unemployment rate for this state during this month from FRED economic data. Provides economic context for spending patterns and demographic analysis."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 0 and 50"
+              name: "unemployment_rate_reasonable_range"
+      
+      - name: revenue_share
+        description: "This demographic segment's share of total state revenue for the month as decimal (e.g., 0.15 = 15% of state revenue). Calculated as segment_spend / total_state_spend. Shows relative importance of each demographic segment."
+        tests:
+          - not_null  # Calculation should always produce result
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 0 and 1"
+              name: "revenue_share_valid_proportion"
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["state", "month", "gender", "age_group", "income_bracket"]
+          name: "unique_state_month_demographic_grain"
+      
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "total_spend / active_users = avg_user_spend"
+          name: "avg_user_spend_calculation_correct"
+          
+      - dbt_utils.not_null_proportion:
+          arguments:
+            column_name: state_unemployment_rate
+            at_least: 0.8
+          name: "unemployment_data_mostly_available"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "avg_user_spend >= 0.01"
+          name: "avg_user_spend_realistic_minimum"
