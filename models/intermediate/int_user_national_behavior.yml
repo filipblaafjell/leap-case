@@ -1,0 +1,76 @@
+version: 2
+
+models:
+  - name: int_user_national_behavior
+    description: "User-level monthly spend and order behavior aggregated nationally, enriched with demographics. Each row represents one user's total activity across all states for one month. Foundation for national-level user analysis and cohort studies."
+    columns:
+      - name: user_id
+        description: "Unique user identifier from survey responses. Primary key for user-level analysis."
+        tests: [not_null]  # Required for user-level analysis
+      
+      - name: month
+        description: "Month of purchase activity. Truncated from order dates to monthly grain."
+        tests: [not_null]  # Required for time-series analysis
+      
+      - name: total_spend
+        description: "Total dollar amount spent by user across all states during this month. Calculated as sum(price * quantity). Critical metric for user value analysis."
+        tests:
+          - not_null  # Business rule: every user-month must have spend calculation
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ total_spend }} > 0"
+              name: "total_spend_positive"
+      
+      - name: unique_products
+        description: "Count of distinct products purchased by user across all states during this month. Based on product_code."
+        tests:
+          - not_null  # Aggregation should always produce result
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ unique_products }} > 0"
+              name: "unique_products_positive"
+      
+      - name: total_orders
+        description: "Count of individual purchase transactions by user across all states during this month."
+        tests:
+          - not_null  # Aggregation should always produce result
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ total_orders }} > 0"
+              name: "total_orders_positive"
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ total_orders }} >=  unique_products"
+              name: "orders_at_least_products"
+      
+      - name: gender
+        description: "User's gender identity from survey data. Joined from stg_amazon_survey. Can be NULL if user didn't provide or survey incomplete."
+      
+      - name: age_group
+        description: "User's age group category from survey data. Joined from stg_amazon_survey. Can be NULL if user didn't provide or survey incomplete."
+      
+      - name: income_bracket
+        description: "User's household income range from survey data. Joined from stg_amazon_survey. Can be NULL if user didn't provide or survey incomplete."
+      
+      - name: education_level
+        description: "User's highest education level from survey data. Joined from stg_amazon_survey. Can be NULL if user didn't provide or survey incomplete."
+      
+      - name: household_size
+        description: "Number of people in user's household from survey data. Joined from stg_amazon_survey. Can be NULL if user didn't provide or survey incomplete."
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["user_id", "month"]
+          name: "unique_user_month_grain"
+      
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "total_spend / total_orders > 0"
+          name: "average_order_value_positive"
+          
+      - dbt_utils.not_null_proportion:
+          arguments:
+            column_name: gender
+            at_least: 0.7
+          name: "demographic_data_reasonably_complete"

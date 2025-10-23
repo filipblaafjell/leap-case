@@ -2,7 +2,7 @@
 
 with cleaned as (
     select
-        try_to_date(date) as date,
+        try_to_date(date) as month,
         try_cast(ces0500000003 as float) as avg_hourly_earnings,
         try_cast(cpiaucsl as float) as cpi_all_items,
         try_cast(cusr0000saf11 as float) as food_price_index,
@@ -17,11 +17,10 @@ with cleaned as (
         try_cast(rsafs as float) as retail_sales,
         try_cast(umcsent as float) as consumer_sentiment
     from {{ source('raw_fred', 'FRED_MACRO_RAW') }}
-    where date is not null
 )
 
 select 
-    date, 
+    month, 
     avg_hourly_earnings,
     cpi_all_items,
     food_price_index,

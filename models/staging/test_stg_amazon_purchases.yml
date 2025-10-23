@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: stg_amazon_purchases
+    description: "Cleaned Amazon purchase history per item and user. Each row represents one product purchase by a user. Filtered to valid US states only."
+    columns:
+      - name: user_id
+        description: "Unique identifier for the survey respondent who made the purchase. Links to stg_amazon_survey."
+        tests: [not_null]  
+      
+      - name: order_date
+        description: "Date when the purchase order was placed. Converted from string to date format."
+        tests: [not_null]  
+      
+      - name: product_category
+        description: "Mapped product category (e.g., Electronics, Books, etc.). UNKNOWN values converted to NULL."
+      
+      - name: price
+        description: "Price per unit of the product in USD. Converted from string, empty values converted to NULL."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ price }} > 0"
+              name: "price_positive"
+      
+      - name: quantity
+        description: "Number of units purchased. Converted from string, empty values converted to NULL."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ quantity }} > 0"
+              name: "quantity_positive"
+      
+      - name: state
+        description: "US state abbreviation where product was shipped. Filtered to valid US states only using filter_valid_states macro."
+      
+      - name: product_title
+        description: "Full title/name of the product purchased. Empty strings converted to NULL."
+      
+      - name: product_code
+        description: "Unique product identifier/SKU. Empty strings converted to NULL."
+

@@ -1,0 +1,136 @@
+version: 2
+
+models:
+  - name: mart_macro_correlation
+    description: "National-level macroeconomic and Amazon performance correlation analysis by month. Each row represents one month's worth of combined economic indicators and Amazon business metrics. Business users can analyze relationships between broader economic trends and company performance, identify economic drivers of business results, and forecast based on macroeconomic conditions."
+    columns:
+      - name: month
+        description: "Month of analysis (YYYY-MM-DD format, always first day of month). Primary dimension for time-series economic and business correlation analysis."
+        tests: [unique, not_null]  # Time series grain - must be unique
+      
+      - name: national_total_spend
+        description: "Total dollar amount spent by all Amazon users across all states during this month. Aggregate business performance metric for correlation with economic indicators."
+        tests:
+          - not_null  # Core business metric
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+              name: "national_total_spend_positive"
+      
+      - name: active_users
+        description: "Count of distinct users who made at least one purchase during this month across all states. Measures platform engagement and market reach."
+        tests:
+          - not_null  # Core user engagement metric
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+              name: "active_users_positive"
+      
+      - name: avg_user_spend
+        description: "Average dollar amount spent per active user during this month nationally. Calculated as national_total_spend / active_users. Key metric for understanding spending behavior intensity."
+        tests:
+          - not_null  # Derived metric should always calculate
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+              name: "avg_user_spend_positive"
+      
+      - name: avg_hourly_earnings
+        description: "Average hourly earnings of all employees (CES0500000003) from FRED. Seasonally adjusted, in dollars. Key labor market indicator affecting consumer purchasing power."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 15 and 100"
+              name: "avg_hourly_earnings_reasonable_range"
+      
+      - name: cpi_all_items
+        description: "Consumer Price Index for All Urban Consumers: All Items (CPIAUCSL) from FRED. Seasonally adjusted, 1982-84=100. Primary inflation measure affecting purchasing power."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 100"
+              name: "cpi_above_baseline"
+      
+      - name: fed_funds_rate
+        description: "Federal funds effective rate (FEDFUNDS) from FRED. Not seasonally adjusted, percent per annum. Key monetary policy indicator affecting economic conditions."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 0 and 20"
+              name: "fed_funds_rate_reasonable_range"
+      
+      - name: retail_sales
+        description: "Advance retail sales: retail and food services, total (RSAFS) from FRED. Seasonally adjusted, millions of dollars. Broader retail market context for Amazon performance."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 100000"
+              name: "retail_sales_realistic_scale"
+      
+      - name: consumer_sentiment
+        description: "University of Michigan Consumer Sentiment Index (UMCSENT) from FRED. Not seasonally adjusted, 1966:Q1=100. Consumer confidence measure affecting spending willingness."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 40 and 120"
+              name: "consumer_sentiment_reasonable_range"
+      
+      - name: personal_income
+        description: "Personal income (PI) from FRED. Seasonally adjusted at annual rates, billions of dollars. Household income measure affecting purchasing capacity."
+      
+      - name: personal_consumption
+        description: "Personal consumption expenditures (PCE) from FRED. Seasonally adjusted at annual rates, billions of dollars. Consumer spending measure for economic context."
+      
+      - name: personal_saving_rate
+        description: "Personal saving rate (PSAVERT) from FRED. Seasonally adjusted, percent. Household financial health indicator affecting discretionary spending."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between -5 and 50"
+              name: "personal_saving_rate_reasonable_range"
+      
+      - name: spend_growth_mom
+        description: "Month-over-month national total spend growth rate as decimal (e.g., 0.10 = 10% growth). Key business performance trend indicator for correlation with economic changes."
+      
+      - name: active_users_growth_mom
+        description: "Month-over-month active users growth rate as decimal. Measures platform adoption trends and user base expansion relative to economic conditions."
+      
+      - name: national_unemployment_rate
+        description: "National unemployment rate from aggregated state-level FRED data. Weighted average providing economic context for Amazon performance analysis."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 2 and 15"
+              name: "national_unemployment_reasonable_range"
+
+    tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "national_total_spend / active_users = avg_user_spend"
+          name: "avg_user_spend_calculation_correct"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "spend_growth_mom >= -0.5"
+          name: "spend_growth_realistic_floor"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "spend_growth_mom <= 2.0"
+          name: "spend_growth_realistic_ceiling"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "active_users_growth_mom >= -0.3"
+          name: "user_growth_realistic_floor"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "active_users_growth_mom <= 1.0"
+          name: "user_growth_realistic_ceiling"
+          
+      - dbt_utils.not_null_proportion:
+          arguments:
+            column_name: avg_hourly_earnings
+            at_least: 0.9
+          name: "key_economic_indicators_mostly_available"

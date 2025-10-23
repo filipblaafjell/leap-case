@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: int_user_state_behavior
+    description: "User-level monthly spend and order behavior per state, enriched with demographics and state unemployment. Each row represents one user's activity in one state for one month. Critical for state-level user analysis and correlation with economic conditions."
+    columns:
+      - name: user_id
+        description: "Unique user identifier from survey responses. Links user behavior to demographic data."
+        tests: [not_null]  # Required for user-level analysis
+      
+      - name: state
+        description: "US state abbreviation where user made purchases. Cleaned and standardized from purchase data."
+        tests: [not_null]  # Required for state-level analysis
+      
+      - name: month
+        description: "Month of purchase activity. Truncated from order dates to monthly grain."
+        tests: [not_null]  # Required for time-series analysis
+      
+      - name: total_spend
+        description: "Total dollar amount spent by user in this state during this month. Calculated as sum(price * quantity) with coalesce to handle nulls."
+        tests:
+          - not_null  # Business rule: every record must have spend calculation
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ total_spend }} >= 0"
+              name: "total_spend_non_negative"
+      
+      - name: unique_products
+        description: "Count of distinct products purchased by user in this state during this month. Based on product_code."
+        tests:
+          - not_null  # Aggregation should always produce result
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ unique_products }} > 0"
+              name: "unique_products_positive"
+      
+      - name: total_orders
+        description: "Count of individual purchase transactions by user in this state during this month."
+        tests:
+          - not_null  # Aggregation should always produce result
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ total_orders }} > 0"
+              name: "total_orders_positive"
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "{{ total_orders }} >= unique_products"
+              name: "orders_at_least_products"
+      
+      - name: gender
+        description: "User's gender identity from survey data. Joined from stg_amazon_survey. Can be NULL if user didn't provide or survey incomplete."
+      
+      - name: age_group
+        description: "User's age group category from survey data. Joined from stg_amazon_survey. Can be NULL if user didn't provide or survey incomplete."
+      
+      - name: income_bracket
+        description: "User's household income range from survey data. Joined from stg_amazon_survey. Can be NULL if user didn't provide or survey incomplete."
+      
+      - name: education_level
+        description: "User's highest education level from survey data. Joined from stg_amazon_survey. Can be NULL if user didn't provide or survey incomplete."
+      
+      - name: household_size
+        description: "Number of people in user's household from survey data. Joined from stg_amazon_survey. Can be NULL if user didn't provide or survey incomplete."
+      
+      - name: state_unemployment_rate
+        description: "Average unemployment rate for the state during this month from FRED data. Joined from stg_fred_unemp. Can be NULL if unemployment data unavailable."
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["user_id", "state", "month"]
+          name: "unique_user_state_month_grain"
+      
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "total_spend > 0 or total_orders >= 0"
+          name: "spend_consistent_with_orders"
+          
+      - dbt_utils.not_null_proportion:
+          arguments:
+            column_name: state_unemployment_rate
+            at_least: 0.8
+          name: "unemployment_data_mostly_available"

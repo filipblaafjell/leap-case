@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: mart_state_performance
+    description: "State-level performance metrics by month including spend totals, user activity, and growth trends. Each row represents one state's aggregate performance for one month. Business users can analyze regional market performance, identify growth patterns, and compare state-level metrics for strategic planning and resource allocation."
+    columns:
+      - name: state
+        description: "US state full name (e.g., 'California', 'Texas', 'New York'). Transformed from abbreviations using rename_states macro for business-friendly reporting and geographic analysis."
+        tests: [not_null]  # Required for geographic analysis
+      
+      - name: month
+        description: "Month of activity (YYYY-MM-DD format, always first day of month). Enables time-series analysis and trend identification for state performance over time."
+        tests: [not_null]  # Required for time-series analysis
+      
+      - name: total_spend
+        description: "Total dollar amount spent by all users in this state during this month. Sum of all user purchases, providing state-level market size and economic activity indicator."
+        tests:
+          - not_null  # Business rule: every state-month must have spend calculation
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+              name: "total_spend_positive"
+      
+      - name: active_users
+        description: "Count of distinct users who made at least one purchase in this state during this month. Measures market penetration and customer base size per state."
+        tests:
+          - not_null  # Required for user analysis
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+              name: "active_users_positive"
+      
+      - name: avg_user_spend
+        description: "Average dollar amount spent per active user in this state during this month. Calculated as total_spend / active_users. Key metric for understanding spending power and customer value by geography."
+        tests:
+          - not_null  # Calculation should always produce result
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+              name: "avg_user_spend_positive"
+      
+      - name: spend_growth_mom
+        description: "Month-over-month total spend growth rate as decimal (e.g., 0.20 = 20% growth, -0.10 = 10% decline). Calculated as (current_month_spend - previous_month_spend) / previous_month_spend. NULL for first month of each state or when previous month had zero spend."
+      
+      - name: avg_spend_growth_mom
+        description: "Month-over-month average user spend growth rate as decimal. Measures changes in spending behavior intensity per user. NULL for first month of each state or when previous month had zero average spend."
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["state", "month"]
+          name: "unique_state_month_grain"
+      
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "total_spend / active_users = avg_user_spend"
+          name: "avg_user_spend_calculation_correct"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "spend_growth_mom >= -1.0"
+          name: "spend_growth_realistic_floor"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "spend_growth_mom <= 100.0"
+          name: "spend_growth_realistic_ceiling"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "avg_spend_growth_mom >= -1.0"
+          name: "avg_spend_growth_realistic_floor"
+          
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "avg_spend_growth_mom <= 50.0"
+          name: "avg_spend_growth_realistic_ceiling"
+          
+      - dbt_utils.not_null_proportion:
+          arguments:
+            column_name: spend_growth_mom
+            at_least: 0.7
+          name: "spend_growth_data_mostly_available"

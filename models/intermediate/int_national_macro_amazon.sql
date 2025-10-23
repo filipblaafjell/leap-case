@@ -1,3 +1,7 @@
+-- Model: int_national_macro_amazon
+-- Grain: month
+-- Purpose: Aggregates national-level Amazon metrics per month and joins macroeconomic indicators including CPI, income, consumption, and national unemployment rate.
+
 {{ config(materialized='view') }}
 
 with amazon_national as (
@@ -5,28 +9,37 @@ with amazon_national as (
         month,
         sum(total_spend) as national_total_spend,
         count(distinct user_id) as active_users,
-        avg(total_spend) as avg_user_spend
-    from {{ ref('int_user_behavior') }}
-    where {{filter_by_cutoff('month')}}
+        sum(total_spend) / nullif(count(distinct user_id), 0) as avg_user_spend
+    from {{ ref('int_user_national_behavior') }}
+    where {{ filter_by_cutoff('month') }}
     group by 1
 ),
 
 macro as (
     select
-        date_trunc('month', date)     as month,
-        avg(avg_hourly_earnings)      as avg_hourly_earnings,
-        avg(cpi_all_items)            as cpi_all_items,
-        avg(food_price_index)         as food_price_index,
-        avg(gasoline_price_index)     as gasoline_price_index,
-        avg(fed_funds_rate)           as fed_funds_rate,
-        avg(retail_sales) * 1000000   as retail_sales,
-        avg(consumer_sentiment)       as consumer_sentiment,
-        avg(personal_income)          as personal_income,
-        avg(personal_consumption)     as personal_consumption,
-        avg(personal_saving_rate)     as personal_saving_rate
+        month,
+        avg_hourly_earnings,      
+        cpi_all_items,            
+        food_price_index,         
+        gasoline_price_index,     
+        fed_funds_rate,       
+        retail_sales,             
+        consumer_sentiment,       
+        personal_income,         
+        personal_consumption,     
+        personal_saving_rate     
     from {{ ref('stg_fred_macro') }}
-    where {{filter_by_cutoff('date')}}
-    group by 1
+    where {{filter_by_cutoff('month')}}
+    and month is not null
+),
+
+unemp as (
+    select
+        month,
+        avg(unemployment_rate) as national_unemployment_rate
+    from {{ ref('stg_fred_unemp') }}
+    where {{ filter_by_cutoff('month') }}
+    group by month
 )
 
 select
@@ -43,6 +56,8 @@ select
     m.consumer_sentiment,
     m.personal_income,
     m.personal_consumption,
-    m.personal_saving_rate
+    m.personal_saving_rate,
+    u.national_unemployment_rate
 from amazon_national a
 left join macro m using (month)
+left join unemp u using (month)

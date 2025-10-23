@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: stg_fred_unemp
+    description: "Cleaned state-level unemployment rates from FRED (Federal Reserve Economic Data). Monthly time series by US state. Critical for regional economic analysis and joins with Amazon user behavior data."
+    columns:
+      - name: month
+        description: "Month date for the unemployment rate measurement. Converted from string to date format using try_to_date."
+        tests: [not_null]
+      
+      - name: state
+        description: "US state abbreviation (e.g., 'CA', 'TX', 'NY'). Cleaned with upper/trim and filtered to valid US states only using filter_valid_states macro."
+      
+      - name: unemployment_rate
+        description: "State unemployment rate as percentage (e.g., 5.2 = 5.2%). Seasonally adjusted. Converted from string to float using try_cast. Key economic indicator for regional analysis."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 0 and 100"
+              name: "unemployment_rate_valid_percentage"
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["state", "month"]
+            name: "unique_state_month_combination"  
+  

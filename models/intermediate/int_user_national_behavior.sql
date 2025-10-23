@@ -1,23 +1,28 @@
+-- Model: int_user_behavior
+-- Grain: user_id + month
+-- Purpose: One record per user per month with spend and order metrics, joined to demographics.
+-- Tests: TODO
+
 {{ config(materialized='view') }}
 
 with purchases as (
     select
         user_id,
         date_trunc('month', order_date) as month,
-        state,
         sum(price * quantity) as total_spend,
         count(distinct product_code) as unique_products,
         count(*) as total_orders
     from {{ ref('stg_amazon_purchases') }}
     where {{ filter_by_cutoff('order_date') }}
-    group by 1,2,3
+    and user_id is not null
+    and product_code is not null
+    group by 1,2
 ),
 
 joined_user as (
     select
         p.user_id,
         p.month,
-        p.state,
         p.total_spend,
         p.unique_products,
         p.total_orders,
@@ -27,24 +32,14 @@ joined_user as (
         u.education_level,
         u.household_size
     from purchases p
-    where {{ filter_by_cutoff('order_date') }}
     left join {{ ref('stg_amazon_survey') }} u using (user_id)
-),
-
-joined_unemp as (
-    select
-        ju.*,
-        f.unemployment_rate
-    from joined_user ju
-    left join {{ ref('stg_fred_unemp') }} f
-        on ju.state = f.state
-       and ju.month = date_trunc('month', f.date)
+    where user_id is not null
+    and month is not null
 )
 
 select
     user_id,
     month,
-    state,
     total_spend,
     unique_products,
     total_orders,
@@ -52,6 +47,5 @@ select
     age_group,
     income_bracket,
     education_level,
-    household_size,
-    unemployment_rate
-from joined_unemp
+    household_size
+from joined_user

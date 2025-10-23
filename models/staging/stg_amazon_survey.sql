@@ -11,19 +11,19 @@ with cleaned as (
                 then 'Other'
             else initcap(nullif(trim(q_demos_race), ''))
         end as race,
-        
-        initcap(nullif(trim(regexp_replace(q_demos_education, '\s*\(.*\)', '')), '')) as education_level,
+
+        -- consistent regex
+        initcap(nullif(trim(regexp_replace(q_demos_education, '\\(.*\\)', '')), '')) as education_level,
 
         nullif(trim(q_demos_income), '')                      as income_bracket,
         initcap(nullif(trim(q_demos_gender), ''))             as gender,
 
-        initcap(nullif(trim(regexp_replace(q_sexual_orientation, '\s*\(.*\)', '')), '')) as sexual_orientation,
-        
-        upper(trim(q_demos_state))                            as state,
+        initcap(nullif(trim(regexp_replace(q_sexual_orientation, '\\(.*\\)', '')), '')) as sexual_orientation,
 
-        nullif(trim(regexp_replace(q_household_size, '\s*\(.*\)', '')), '') as household_size,
+        {{ rename_state_to_abb("initcap(trim(q_demos_state))") }} as state,
 
-        nullif(trim(regexp_replace(q_amazon_use_howmany, '\s*\(.*\)', '')), '') as amazon_use_devices,
+        nullif(trim(regexp_replace(q_amazon_use_hh_size, '\\(.*\\)', '')), '') as household_size,
+        nullif(trim(regexp_replace(q_amazon_use_howmany, '\\(.*\\)', '')), '') as amazon_use_devices,
 
         nullif(trim(q_amazon_use_how_oft), '')                as amazon_use_frequency,
         initcap(nullif(trim(q_substance_use_cigarettes), '')) as uses_cigarettes,
@@ -65,3 +65,5 @@ select
     census_data_use,
     research_society_use
 from cleaned
+where {{ filter_valid_states('state') }}
+  and state is not null
